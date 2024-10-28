@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/tests">
+        <file>test.zone</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file>delete.png</file>
+    </qresource>
+</RCC>
