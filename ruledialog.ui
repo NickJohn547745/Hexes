@@ -1,0 +1,756 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RuleDialog</class>
+ <widget class="QDialog" name="RuleDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>546</width>
+    <height>595</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>546</width>
+    <height>538</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Add Rule</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_7">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout_6">
+       <item>
+        <widget class="QGroupBox" name="groupBox_3">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="font">
+          <font>
+           <family>CommitMono</family>
+          </font>
+         </property>
+         <property name="title">
+          <string>Preview</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_8">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_9">
+            <item>
+             <widget class="QToolButton" name="toolButton_2">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset resource="Resources.qrc">
+                <normaloff>:/icons/delete.png</normaloff>:/icons/delete.png</iconset>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="toolButton">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer">
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_10">
+            <item>
+             <widget class="RulePreview" name="widget_RulePreview" native="true">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QScrollBar" name="verticalScrollBar">
+              <property name="maximum">
+               <number>0</number>
+              </property>
+              <property name="singleStep">
+               <number>100</number>
+              </property>
+              <property name="pageStep">
+               <number>250</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QGroupBox" name="groupBox">
+         <property name="font">
+          <font>
+           <family>CommitMono</family>
+          </font>
+         </property>
+         <property name="title">
+          <string>Rule Options</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_8">
+            <item>
+             <widget class="QLabel" name="label_6">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Name:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_Name">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>RULE</string>
+              </property>
+              <property name="maxLength">
+               <number>10</number>
+              </property>
+              <property name="placeholderText">
+               <string>Rule Name</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <item>
+             <widget class="QLabel" name="label_5">
+              <property name="text">
+               <string>Type:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_Type">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <item>
+               <property name="text">
+                <string>Select Input</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Skip n Bytes</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>int8 [1]</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>uint8 [1]</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>int16 [2]</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>uint16 [2]</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>int32 [3]</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>uint32 [3]</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>int64 [4]</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>uint64 [4]</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="layout_ByteOrder">
+            <item>
+             <widget class="QRadioButton" name="radioButton_LE">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Little Endian</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="radioButton_BE">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Big Endian</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="layout_Skip">
+            <item>
+             <widget class="QLabel" name="label">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Skip:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="suffix">
+               <string> bytes</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>100000</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_RepeatRule">
+         <property name="font">
+          <font>
+           <family>CommitMono</family>
+          </font>
+         </property>
+         <property name="title">
+          <string>Repeat Rule</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="QRadioButton" name="radioButton_StaticVal">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Static Value</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="radioButton_PrevVar">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Previous Var</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="layout_Skip_2">
+            <item>
+             <widget class="QLabel" name="label_2">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Repeat #:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox_2">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="suffix">
+               <string> times</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>100000</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_Vars">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <item>
+               <property name="text">
+                <string>Select Variable</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_PreSkip">
+         <property name="font">
+          <font>
+           <family>CommitMono</family>
+          </font>
+         </property>
+         <property name="title">
+          <string>Pre-Repeat Skip</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <item>
+             <widget class="QRadioButton" name="radioButton_Pre_StaticVal">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Static Value</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="radioButton_Pre_PrevVar">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Previous Var</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="layout_Skip_3">
+            <item>
+             <widget class="QLabel" name="label_3">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Skip:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox_Pre_StaticVal">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="suffix">
+               <string> bytes</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>100000</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_Pre_Vars">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <item>
+               <property name="text">
+                <string>Select Variable</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_PostSkip">
+         <property name="font">
+          <font>
+           <family>CommitMono</family>
+          </font>
+         </property>
+         <property name="title">
+          <string>Post-Repeat Skip</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_5">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_5">
+            <item>
+             <widget class="QRadioButton" name="radioButton_Post_StaticVal">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Static Value</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="radioButton_Post_PrevVar">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Previous Var</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="layout_Skip_4">
+            <item>
+             <widget class="QLabel" name="label_4">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="text">
+               <string>Skip:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox_Post_StaticVal">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <property name="suffix">
+               <string> bytes</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>100000</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_Post_Vars">
+              <property name="font">
+               <font>
+                <family>CommitMono</family>
+               </font>
+              </property>
+              <item>
+               <property name="text">
+                <string>Select Variable</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <item>
+          <widget class="QPushButton" name="pushButton_QueueRule">
+           <property name="font">
+            <font>
+             <family>CommitMono</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>Queue Rule</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_PopFirstRule">
+           <property name="font">
+            <font>
+             <family>CommitMono</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>Pop First</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_PopLastRule">
+           <property name="font">
+            <font>
+             <family>CommitMono</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>Pop Last</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_Clear">
+           <property name="font">
+            <font>
+             <family>CommitMono</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>Clear</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_2">
+         <property name="font">
+          <font>
+           <family>CommitMono</family>
+          </font>
+         </property>
+         <property name="title">
+          <string>GroupBox</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_7">
+     <item>
+      <widget class="QPushButton" name="pushButton_Save">
+       <property name="font">
+        <font>
+         <family>CommitMono</family>
+        </font>
+       </property>
+       <property name="text">
+        <string>Save Rule</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_Import">
+       <property name="font">
+        <font>
+         <family>CommitMono</family>
+        </font>
+       </property>
+       <property name="text">
+        <string>Import Snippet</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_Export">
+       <property name="font">
+        <font>
+         <family>CommitMono</family>
+        </font>
+       </property>
+       <property name="text">
+        <string>Export Snippet</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_Cancel">
+       <property name="font">
+        <font>
+         <family>CommitMono</family>
+        </font>
+       </property>
+       <property name="text">
+        <string>Cancel</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>RulePreview</class>
+   <extends>QWidget</extends>
+   <header>rulepreview.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="Resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>
