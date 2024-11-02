@@ -11,6 +11,8 @@ CONFIG += c++17
 SOURCES += \
     blockvalue.cpp \
     deleteruledialog.cpp \
+    hexeslogger.cpp \
+    hexstream.cpp \
     hexviewer.cpp \
     main.cpp \
     mainwindow.cpp \
@@ -22,6 +24,8 @@ SOURCES += \
 HEADERS += \
     blockvalue.h \
     deleteruledialog.h \
+    hexeslogger.h \
+    hexstream.h \
     hexviewer.h \
     mainwindow.h \
     rule.h \

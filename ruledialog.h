@@ -23,6 +23,8 @@ public:
     Rule GetRule();
     void SetRule(const Rule rule);
 
+    void SetBaseDir(QString dir);
+
     void SetRuleNames(QStringList ruleNames);
     void SetVars(QMap<QString, BlockValue> vars);
 
@@ -33,18 +35,22 @@ private slots:
     void pPopFirstRule();
     void pPopLastRule();
     void pCancelDialog();
+    void pImportSnippet();
+    void pExportSnippet();
     void pTypeChanged(int index);
-    void pRepeatToggled(bool toggled);
-    void pPrevVarToggled(bool toggled);
-    void pStaticValToggled(bool toggled);
+    void pSkip_PrevVarToggled(bool toggled);
+    void pSkip_StaticValToggled(bool toggled);
     void pPre_PrevVarToggled(bool toggled);
     void pPre_StaticValToggled(bool toggled);
     void pPost_PrevVarToggled(bool toggled);
     void pPost_StaticValToggled(bool toggled);
+    void pRepeat_PrevVarToggled(bool toggled);
+    void pRepeat_StaticValToggled(bool toggled);
 
 signals:
     void RuleChanged(Rule rule);
     void RulesChanged(QVector<Rule> rules);
+    void BaseDirChanged(QString dir);
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -55,7 +61,8 @@ private:
     QStringList pRuleNames;
     QMap<QString, BlockValue> pVars;
     int pDefaultRuleCount;
-    QVector<Rule> pRules;
+    QQueue<Rule> pRules;
+    QString pSnippetDir;
 
     void pHideLayout(QLayout *layout);
     void pShowLayout(QLayout *layout);

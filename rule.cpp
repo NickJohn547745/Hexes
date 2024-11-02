@@ -11,6 +11,10 @@ Rule::Rule() {
     pRepeatCount = 0;
     pPreSkipCount = 0;
     pPostSkipCount = 0;
+    pRepeatOffset = 0;
+    pSkipOffset = 0;
+    pPreSkipOffset = 0;
+    pPostSkipOffset = 0;
 }
 
 Rule::Rule(const Rule &rule) {
@@ -24,6 +28,10 @@ Rule::Rule(const Rule &rule) {
     pRepeatCount = rule.RepeatCount();
     pPreSkipCount = rule.PreSkipCount();
     pPostSkipCount = rule.PostSkipCount();
+    pRepeatOffset = rule.RepeatOffset();
+    pSkipOffset = rule.SkipOffset();
+    pPreSkipOffset = rule.PreSkipOffset();
+    pPostSkipOffset = rule.PostSkipOffset();
 }
 
 Rule &Rule::operator=(const Rule &rule) {
@@ -41,8 +49,27 @@ Rule &Rule::operator=(const Rule &rule) {
     pRepeatCount = rule.RepeatCount();
     pPreSkipCount = rule.PreSkipCount();
     pPostSkipCount = rule.PostSkipCount();
+    pRepeatOffset = rule.RepeatOffset();
+    pSkipOffset = rule.SkipOffset();
+    pPreSkipOffset = rule.PreSkipOffset();
+    pPostSkipOffset = rule.PostSkipOffset();
 
     return *this;
+}
+
+bool Rule::operator!() const {
+    bool nameNull = pName.isEmpty();
+    bool typeNull = pType == TYPE_NONE;
+    bool propsNull = pProps.isEmpty();
+    bool byteOrderNull = pByteOrder == BYTE_ORDER_NONE;
+    bool lengthNull = pLength < 0;
+    bool valueNull = pValue.isLower() || pValue.isEmpty();
+    bool repeatNull = pRepeatCount < 0;
+    bool preSkipNull = pPreSkipCount < 0;
+    bool postSkipNull = pPostSkipCount < 0;
+    return nameNull && typeNull && propsNull &&
+            byteOrderNull && lengthNull && valueNull &&
+            repeatNull && preSkipNull && postSkipNull;
 }
 
 bool Rule::operator==(const Rule &rule) const {
@@ -65,7 +92,7 @@ bool Rule::operator!=(const Rule &rule) const  {
 }
 
 void Rule::SetName(const QString name) {
-    pName = name;
+    pName = name.toUpper();
 }
 
 QString Rule::Name() const {
@@ -137,6 +164,7 @@ int Rule::RepeatCount() const {
 }
 
 void Rule::SetPreSkipCount(int preSkipCount) {
+    if (pPreSkipCount < 0) { return; }
     pPreSkipCount = preSkipCount;
 }
 
@@ -150,6 +178,38 @@ void Rule::SetPostSkipCount(int postSkipCount) {
 
 int Rule::PostSkipCount() const {
     return pPostSkipCount;
+}
+
+void Rule::SetRepeatOffset(int repeatOffset) {
+    pRepeatOffset = repeatOffset;
+}
+
+int Rule::RepeatOffset() const {
+    return pRepeatOffset;
+}
+
+void Rule::SetSkipOffset(int skipOffset) {
+    pSkipOffset = skipOffset;
+}
+
+int Rule::SkipOffset() const {
+    return pSkipOffset;
+}
+
+void Rule::SetPreSkipOffset(int preSkipOffset) {
+    pPreSkipOffset = preSkipOffset;
+}
+
+int Rule::PreSkipOffset() const {
+    return pPreSkipOffset;
+}
+
+void Rule::SetPostSkipOffset(int postSkipOffset) {
+    pPostSkipOffset = postSkipOffset;
+}
+
+int Rule::PostSkipOffset() const {
+    return pPostSkipOffset;
 }
 
 QColor Rule::pGenerateColor() {

@@ -4,6 +4,12 @@
 #include <QObject>
 #include <QVariant>
 
+/*
+ * BLOCK_TYPE enum
+ *
+ * Value types that the BlockVlaue class can
+ * ingest and convert to/from.
+ */
 enum BLOCK_TYPE {
     BLOCK_TYPE_NONE = 0,
     BLOCK_TYPE_INT8 = 1,
@@ -16,34 +22,47 @@ enum BLOCK_TYPE {
     BLOCK_TYPE_UINT64 = 8,
 };
 
-class BlockValue : public QObject
+/*
+ * BlockValue class
+ *
+ * Represents a variable value resulting from
+ * parsing a block of data from the input.
+ *
+ * Constructed preferrably with a name and value.
+ */
+
+class BlockValue
 {
-    Q_OBJECT
-public:
-    explicit BlockValue(QObject *parent = nullptr);
-    BlockValue(const BlockValue &blockVal);
 
-    BlockValue &operator=(const BlockValue &blockVal);
+public: /*** PUBLIC MEMBERS ***/
+    /* Block Value Constructors */
+    BlockValue();                                   // Default
+    BlockValue(const BlockValue &aBlockVal);        // Copy
+    BlockValue(const QString aName);                // Name
+    BlockValue(const QString aName, qint8 aVal);    // Name + int8
+    BlockValue(const QString aName, quint8 aVal);   // Name + uint8
+    BlockValue(const QString aName, qint16 aVal);   // Name + int16
+    BlockValue(const QString aName, quint16 aVal);  // Name + uint16
+    BlockValue(const QString aName, qint32 aVal);   // Name + int32
+    BlockValue(const QString aName, quint32 aVal);  // Name + uint32
+    BlockValue(const QString aName, qint64 aVal);   // Name + int64
+    BlockValue(const QString aName, quint64 aVal);  // Name + uint64
 
-    void SetName(QString name);
-    QString Name() const;
+    /* Block Value Operators */
+    BlockValue &operator=(const BlockValue &aBlockVal); // = operator
 
-    void SetBlockType(BLOCK_TYPE blockType);
-    BLOCK_TYPE BlockType() const;
+    /* Setters and Getters */
+    void SetName(const QString aName);          // Set Name
+    QString Name() const;                       // Get Name
+    void SetBlockType(BLOCK_TYPE aBlockType);   // Set Block Value Type
+    BLOCK_TYPE BlockType() const;               // Get Block Value Type
 
-    void SetValue(qint8 val);
-    void SetValue(quint8 val);
-    void SetValue(qint16 val);
-    void SetValue(quint16 val);
-    void SetValue(qint32 val);
-    void SetValue(quint32 val);
-    void SetValue(qint64 val);
-    void SetValue(quint64 val);
+    /* Data Access Methods */
+    int ToInt() const;          // Convert to integer
+    QString ToString() const;   // Convert to string
+    QVariant ToVariant() const; // Return as raw data
 
-    QVariant Value() const;
-    int ValueToInt();
-
-private:
+private: /*** PRIVATE MEMBERS ***/
     QString pName;
     BLOCK_TYPE pBlockType;
     QVariant pData;

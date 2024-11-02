@@ -9,12 +9,42 @@ RuleDialog::RuleDialog(QWidget *parent) :
     pRuleNames = QStringList();
     pVars = QMap<QString, BlockValue>();
     pDefaultRuleCount = 1;
-    pRules = QVector<Rule>();
+    pRules = QQueue<Rule>();
+    pSnippetDir = "C:/";
 
-    pHideLayout(ui->layout_Skip);
-    ui->groupBox_2->hide();
-    ui->groupBox_PreSkip->hide();
-    ui->groupBox_PostSkip->hide();
+    ui->toolBox->setCurrentIndex(0);
+
+    ui->groupBox_SkipOptions->hide();
+    pHideLayout(ui->layout_ByteOrder);
+
+    ui->label_Pre_SkipOffset->hide();
+    ui->spinBox_Pre_Offset->hide();
+
+    ui->label_SkipOffset->hide();
+    ui->spinBox_Skip_Offset->hide();
+
+    ui->label_Post_SkipOffset->hide();
+    ui->spinBox_Post_Offset->hide();
+
+    ui->label_RepeatOffset->hide();
+    ui->spinBox_Repeat_Offset->hide();
+
+    connect(ui->checkBox_PreSkip_Offset, &QCheckBox::toggled, this, [this](bool toggled) {
+        ui->label_Pre_SkipOffset->setVisible(toggled);
+        ui->spinBox_Pre_Offset->setVisible(toggled);
+    });
+    connect(ui->checkBox_Skip_Offset, &QCheckBox::toggled, this, [this](bool toggled) {
+        ui->label_SkipOffset->setVisible(toggled);
+        ui->spinBox_Skip_Offset->setVisible(toggled);
+    });
+    connect(ui->checkBox_PostSkip_Offset, &QCheckBox::toggled, this, [this](bool toggled) {
+        ui->label_Post_SkipOffset->setVisible(toggled);
+        ui->spinBox_Post_Offset->setVisible(toggled);
+    });
+    connect(ui->checkBox_Repeat_Offset, &QCheckBox::toggled, this, [this](bool toggled) {
+        ui->label_RepeatOffset->setVisible(toggled);
+        ui->spinBox_Repeat_Offset->setVisible(toggled);
+    });
 
     connect(ui->verticalScrollBar, &QScrollBar::valueChanged, ui->widget_RulePreview, &RulePreview::SetScrollValue);
     connect(ui->widget_RulePreview, &RulePreview::ScrollMaxChanged, ui->verticalScrollBar, &QScrollBar::setMaximum);
@@ -27,13 +57,18 @@ RuleDialog::RuleDialog(QWidget *parent) :
     connect(ui->pushButton_Save, &QPushButton::clicked, this, &RuleDialog::pSaveRules);
     connect(ui->comboBox_Type, &QComboBox::currentIndexChanged, this, &RuleDialog::pTypeChanged);
 
+    connect(ui->pushButton_Import, &QPushButton::clicked, this, &RuleDialog::pImportSnippet);
+    connect(ui->pushButton_Export, &QPushButton::clicked, this, &RuleDialog::pExportSnippet);
+
     connect(this, &RuleDialog::RulesChanged, ui->widget_RulePreview, &RulePreview::SetRules);
 
-    connect(ui->groupBox_RepeatRule, &QGroupBox::toggled, this, &RuleDialog::pRepeatToggled);
+    ui->comboBox_Repeat_Vars->hide();
+    connect(ui->radioButton_Repeat_PrevVar, &QRadioButton::toggled, this, &RuleDialog::pRepeat_PrevVarToggled);
+    connect(ui->radioButton_Repeat_StaticVal, &QRadioButton::toggled, this, &RuleDialog::pRepeat_StaticValToggled);
 
-    ui->comboBox_Vars->hide();
-    connect(ui->radioButton_PrevVar, &QRadioButton::toggled, this, &RuleDialog::pPrevVarToggled);
-    connect(ui->radioButton_StaticVal, &QRadioButton::toggled, this, &RuleDialog::pStaticValToggled);
+    ui->comboBox_Skip_Vars->hide();
+    connect(ui->radioButton_Skip_PrevVar, &QRadioButton::toggled, this, &RuleDialog::pSkip_PrevVarToggled);
+    connect(ui->radioButton_Skip_StaticVal, &QRadioButton::toggled, this, &RuleDialog::pSkip_StaticValToggled);
 
     ui->comboBox_Pre_Vars->hide();
     connect(ui->radioButton_Pre_StaticVal, &QRadioButton::toggled, this, &RuleDialog::pPre_StaticValToggled);
@@ -49,102 +84,169 @@ RuleDialog::~RuleDialog() {
 }
 
 void RuleDialog::pQueueRule() {
-    int index = ui->comboBox_Type->currentIndex();
-    RULE_TYPE type = (RULE_TYPE)index;
-    if (type == TYPE_NONE) { return; }
+    QString name = ui->lineEdit_Name->text();
+    if (name == "") { return; }
 
-    int repeatCount = 0;
-    int preSkip = 0;
-    int postSkip = 0;
-    if (ui->groupBox_RepeatRule->isChecked()) {
-        if (ui->radioButton_PrevVar->isChecked()) {
-            QString itemText = ui->comboBox_Vars->currentText();
+    RULE_TYPE type = (RULE_TYPE)ui->comboBox_Type->currentIndex();
+
+    Rule rule;
+    rule.SetName(name);
+    rule.SetType(type);
+
+    if (type == TYPE_NONE) {
+        return;
+    } else if (type == TYPE_SKIP) {
+        if (ui->radioButton_Skip_PrevVar->isChecked()) {
+            QString itemText = ui->comboBox_Skip_Vars->currentText();
             const QString leadingNumber = itemText.split('.').first() + ".";
             const QString varText = itemText.replace(leadingNumber, "")
                     .split('(').first().trimmed();
             BlockValue blockVal = pVars[varText];
-            repeatCount = blockVal.ValueToInt();
-        } else if (ui->radioButton_StaticVal->isChecked()) {
-            repeatCount = ui->spinBox_2->value();
+            rule.SetLength(blockVal.ToInt());
+        } else if (ui->radioButton_Skip_StaticVal->isChecked()) {
+            rule.SetLength(ui->spinBox_Skip_StaticVal->value());
         }
     }
-    QString name = ui->lineEdit_Name->text();
-    if (name == "") { return; }
+
+    if (ui->radioButton_Repeat_StaticVal->isChecked()) {
+        rule.SetRepeatCount(ui->spinBox_Repeat_StaticVal->value());
+    } else {
+        QString itemText = ui->comboBox_Repeat_Vars->currentText();
+        const QString leadingNumber = itemText.split('.').first() + ".";
+        const QString varText = itemText.replace(leadingNumber, "")
+                .split('(').first().trimmed();
+        BlockValue blockVal = pVars[varText];
+        rule.SetRepeatCount(blockVal.ToInt());
+    }
 
     if (ui->groupBox_PreSkip->isChecked()) {
         if (ui->radioButton_Pre_StaticVal->isChecked()) {
-            preSkip = ui->spinBox_Pre_StaticVal->value();
+            rule.SetPreSkipCount(ui->spinBox_Pre_StaticVal->value());
         } else {
             QString itemText = ui->comboBox_Pre_Vars->currentText();
             const QString leadingNumber = itemText.split('.').first() + ".";
             const QString varText = itemText.replace(leadingNumber, "")
                     .split('(').first().trimmed();
             BlockValue blockVal = pVars[varText];
-            preSkip = blockVal.ValueToInt();
+            rule.SetPreSkipCount(blockVal.ToInt());
         }
     }
 
     if (ui->groupBox_PostSkip->isChecked()) {
         if (ui->radioButton_Post_StaticVal->isChecked()) {
-            postSkip = ui->spinBox_Post_StaticVal->value();
+            rule.SetPostSkipCount(ui->spinBox_Post_StaticVal->value());
         } else {
             QString itemText = ui->comboBox_Post_Vars->currentText();
             const QString leadingNumber = itemText.split('.').first() + ".";
             const QString varText = itemText.replace(leadingNumber, "")
                     .split('(').first().trimmed();
             BlockValue blockVal = pVars[varText];
-            postSkip = blockVal.ValueToInt();
+            rule.SetPostSkipCount(blockVal.ToInt());
         }
     }
 
-    QString ruleName = name;
-
-    BYTE_ORDER byteOrder = BYTE_ORDER_NONE;
     if (ui->radioButton_BE->isChecked()) {
-        byteOrder = BYTE_ORDER_BE;
+        rule.SetByteOrder(BYTE_ORDER_BE);
     } else {
-        byteOrder = BYTE_ORDER_LE;
+        rule.SetByteOrder(BYTE_ORDER_LE);
     }
 
-    Rule rule;
-    rule.SetName(ruleName);
-    rule.SetType(type);
-    rule.SetByteOrder(byteOrder);
-    rule.SetRepeatCount(repeatCount);
-    rule.SetPreSkipCount(preSkip);
-    rule.SetPostSkipCount(postSkip);
+    rule.SetSkipOffset(ui->spinBox_Skip_Offset->value());
+    rule.SetPreSkipOffset(ui->spinBox_Pre_Offset->value());
+    rule.SetPostSkipOffset(ui->spinBox_Post_Offset->value());
+    rule.SetRepeatOffset(ui->spinBox_Repeat_Offset->value());
 
-    if (index == 1) { // skip
-        rule.SetLength(ui->spinBox->value());
-    }
-
-    pRules.push_back(rule);
-    ui->widget_RulePreview->SetRules(pRules);
+    pRules.enqueue(rule);
+    ui->widget_RulePreview->SetRules(pRules.toList());
 }
 
 void RuleDialog::pSaveRules() {
-    emit RulesChanged(pRules);
+    emit RulesChanged(pRules.toList());
     close();
 }
 
 void RuleDialog::pClearRules() {
     pRules.clear();
-    ui->widget_RulePreview->SetRules(pRules);
+    ui->widget_RulePreview->SetRules(pRules.toList());
 }
 
 void RuleDialog::pPopFirstRule() {
     pRules.pop_front();
-    ui->widget_RulePreview->SetRules(pRules);
+    ui->widget_RulePreview->SetRules(pRules.toList());
 }
 
 void RuleDialog::pPopLastRule() {
     pRules.pop_back();
-    ui->widget_RulePreview->SetRules(pRules);
+    ui->widget_RulePreview->SetRules(pRules.toList());
 }
 
 void RuleDialog::pCancelDialog() {
     pDefaultRuleCount--;
     close();
+}
+
+void RuleDialog::pImportSnippet() {
+    QStringList filters;
+    filters.append("Rule File (*.hrs)");
+    filters.append("All Files(*.*)");
+
+    QFileDialog importDialog(this);
+    importDialog.setWindowTitle("Open Hexes Rule Snippet");
+    importDialog.setFileMode(QFileDialog::ExistingFile);
+    importDialog.setDirectory(pSnippetDir);
+    importDialog.setAcceptMode(QFileDialog::AcceptOpen);
+    importDialog.setNameFilters(filters);
+    if (importDialog.exec() != QDialog::Accepted) {
+        qDebug() << "Open snippet dialog was not accepted!";
+        return;
+    }
+
+    QString snippetPath = importDialog.selectedFiles().first();
+    QString tempSnippetPath = snippetPath;
+    pSnippetDir = tempSnippetPath.replace(tempSnippetPath.split('/').last(), "");
+    emit BaseDirChanged(pSnippetDir);
+
+    QFile snippetFile(snippetPath);
+    if (!snippetFile.open(QIODevice::ReadOnly)) {
+        qDebug() << "Failed to open snippet file!";
+        return;
+    }
+    snippetFile.close();
+
+    QSettings snippetImport(snippetPath, QSettings::IniFormat);
+    pRules = snippetImport.value("rules").value<QQueue<Rule>>();
+    ui->widget_RulePreview->SetRules(pRules.toList());
+}
+
+void RuleDialog::pExportSnippet() {
+    QStringList filters;
+    filters.append("Rule File (*.hrs)");
+    filters.append("All Files(*.*)");
+
+    QFileDialog exportDialog(this);
+    exportDialog.setWindowTitle("Save Hexes Rule Snippet");
+    exportDialog.setDirectory(pSnippetDir);
+    exportDialog.setAcceptMode(QFileDialog::AcceptSave);
+    exportDialog.setNameFilters(filters);
+    if (exportDialog.exec() != QDialog::Accepted) {
+        qDebug() << "Save snippet dialog was not accepted!";
+        return;
+    }
+
+    QString snippetPath = exportDialog.selectedFiles().first();
+    QString tempSnippetPath = snippetPath;
+    pSnippetDir = tempSnippetPath.replace(tempSnippetPath.split('/').last(), "");
+    emit BaseDirChanged(pSnippetDir);
+
+    QFile snippetFile(snippetPath);
+    if (!snippetFile.open(QIODevice::WriteOnly)) {
+        qDebug() << "Failed to save snippet file!";
+        return;
+    }
+    snippetFile.close();
+
+    QSettings snippetExport(snippetPath, QSettings::IniFormat);
+    snippetExport.setValue("rules", QVariant::fromValue(pRules));
 }
 
 void RuleDialog::pHideLayout(QLayout* layout) {
@@ -171,16 +273,17 @@ void RuleDialog::pShowLayout(QLayout* layout) {
     }
 }
 
-
 void RuleDialog::pTypeChanged(int index) {
-    pHideLayout(ui->layout_Skip);
+    ui->groupBox_SkipOptions->hide();
     pShowLayout(ui->layout_ByteOrder);
 
     switch (index) {
     case 0: // none
+        ui->groupBox_SkipOptions->hide();
+        pHideLayout(ui->layout_ByteOrder);
         break;
     case 1: // skip
-        pShowLayout(ui->layout_Skip);
+        ui->groupBox_SkipOptions->show();
         pHideLayout(ui->layout_ByteOrder);
         break;
     case 2: // int8 [1]
@@ -202,19 +305,24 @@ void RuleDialog::pTypeChanged(int index) {
     }
 }
 
-void RuleDialog::pRepeatToggled(bool toggled) {
-    ui->groupBox_PreSkip->setVisible(toggled);
-    ui->groupBox_PostSkip->setVisible(toggled);
+void RuleDialog::pSkip_PrevVarToggled(bool toggled) {
+    ui->comboBox_Skip_Vars->setVisible(toggled);
+    ui->spinBox_Skip_StaticVal->setVisible(!toggled);
 }
 
-void RuleDialog::pPrevVarToggled(bool toggled) {
-    ui->comboBox_Vars->setVisible(toggled);
-    ui->spinBox_2->setVisible(!toggled);
+void RuleDialog::pSkip_StaticValToggled(bool toggled) {
+    ui->comboBox_Skip_Vars->setVisible(!toggled);
+    ui->spinBox_Skip_StaticVal->setVisible(toggled);
 }
 
-void RuleDialog::pStaticValToggled(bool toggled) {
-    ui->comboBox_Vars->setVisible(!toggled);
-    ui->spinBox_2->setVisible(toggled);
+void RuleDialog::pRepeat_PrevVarToggled(bool toggled) {
+    ui->comboBox_Repeat_Vars->setVisible(toggled);
+    ui->spinBox_Repeat_StaticVal->setVisible(!toggled);
+}
+
+void RuleDialog::pRepeat_StaticValToggled(bool toggled) {
+    ui->comboBox_Repeat_Vars->setVisible(!toggled);
+    ui->spinBox_Repeat_StaticVal->setVisible(toggled);
 }
 
 void RuleDialog::pPre_PrevVarToggled(bool toggled) {
@@ -238,21 +346,50 @@ void RuleDialog::pPost_StaticValToggled(bool toggled) {
 }
 
 void RuleDialog::closeEvent(QCloseEvent *event) {
-    pDefaultRuleCount++;
+    ui->toolBox->setCurrentIndex(0);
 
+    if (pRuleNames.contains(QString("RULE %1").arg(pDefaultRuleCount))) {
+        pDefaultRuleCount++;
+    }
     const QString defaultName = QString("RULE %1").arg(pDefaultRuleCount);
     ui->lineEdit_Name->setText(defaultName);
+
     ui->comboBox_Type->setCurrentIndex(0);
 
     ui->radioButton_LE->setChecked(true);
-    ui->spinBox->setValue(1);
 
-    ui->radioButton_StaticVal->setChecked(true);
-    ui->spinBox_2->setValue(1);
-    ui->comboBox_Vars->setCurrentIndex(0);
+    ui->spinBox_Skip_StaticVal->setValue(1);
+    ui->checkBox_Skip_Offset->setChecked(false);
+    ui->label_SkipOffset->hide();
+    ui->spinBox_Skip_Offset->hide();
+    ui->radioButton_Skip_StaticVal->setChecked(true);
+    ui->spinBox_Skip_StaticVal->setValue(0);
+    ui->comboBox_Skip_Vars->setCurrentIndex(0);
+
+    ui->groupBox_PreSkip->setChecked(false);
+    ui->checkBox_PreSkip_Offset->setChecked(false);
+    ui->radioButton_Pre_StaticVal->setChecked(true);
+    ui->spinBox_Pre_StaticVal->show();
+    ui->comboBox_Pre_Vars->hide();
+    ui->spinBox_Pre_Offset->setValue(0);
+    ui->spinBox_Pre_StaticVal->setValue(0);
+
+    ui->groupBox_PostSkip->setChecked(false);
+    ui->checkBox_PostSkip_Offset->setChecked(false);
+    ui->radioButton_Post_StaticVal->setChecked(true);
+    ui->spinBox_Post_StaticVal->show();
+    ui->comboBox_Post_Vars->hide();
+    ui->spinBox_Post_Offset->setValue(0);
+    ui->spinBox_Post_StaticVal->setValue(0);
+
+    ui->radioButton_Repeat_StaticVal->setChecked(true);
+    ui->checkBox_Repeat_Offset->setChecked(false);
+    ui->label_RepeatOffset->hide();
+    ui->spinBox_Repeat_Offset->hide();
+    ui->spinBox_Repeat_StaticVal->setValue(0);
 
     pRules.clear();
-    ui->widget_RulePreview->SetRules(pRules);
+    ui->widget_RulePreview->SetRules(pRules.toList());
 
     QDialog::closeEvent(event);
 }
@@ -265,8 +402,12 @@ void RuleDialog::SetRule(const Rule rule) {
     ui->lineEdit_Name->setText(rule.Name());
 
     if (rule.Type() == TYPE_SKIP) {
-        ui->spinBox->setValue(rule.Length());
+        ui->spinBox_Skip_StaticVal->setValue(rule.Length());
     }
+}
+
+void RuleDialog::SetBaseDir(QString dir) {
+    pSnippetDir = dir;
 }
 
 void RuleDialog::SetRuleNames(QStringList ruleNames) {
@@ -274,8 +415,11 @@ void RuleDialog::SetRuleNames(QStringList ruleNames) {
 }
 
 void RuleDialog::SetVars(QMap<QString, BlockValue> vars) {
-    ui->comboBox_Vars->clear();
-    ui->comboBox_Vars->addItem("Select Variable");
+    ui->comboBox_Repeat_Vars->clear();
+    ui->comboBox_Repeat_Vars->addItem("Select Variable");
+
+    ui->comboBox_Skip_Vars->clear();
+    ui->comboBox_Skip_Vars->addItem("Select Variable");
 
     ui->comboBox_Pre_Vars->clear();
     ui->comboBox_Pre_Vars->addItem("Select Variable");
@@ -289,8 +433,9 @@ void RuleDialog::SetVars(QMap<QString, BlockValue> vars) {
         QString varName = (QString)key;
         BlockValue varVal = (BlockValue)value;
         QString itemName = QString("%1. %2 (%3)")
-                .arg(QString::number(i), varName, varVal.Value().toString());
-        ui->comboBox_Vars->addItem(itemName);
+                .arg(QString::number(i), varName, varVal.ToVariant().toString());
+        ui->comboBox_Repeat_Vars->addItem(itemName);
+        ui->comboBox_Skip_Vars->addItem(itemName);
         ui->comboBox_Pre_Vars->addItem(itemName);
         ui->comboBox_Post_Vars->addItem(itemName);
     }

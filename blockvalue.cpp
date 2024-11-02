@@ -1,32 +1,123 @@
 #include "blockvalue.h"
 
-BlockValue::BlockValue(QObject *parent)
-    : QObject{parent},
-    pBlockType{BLOCK_TYPE_INT8},
-    pName{""},
-    pData{} {
-
+/*
+ * Block Value default constructor
+ */
+BlockValue::BlockValue() {
+    pName = "";
+    pBlockType = BLOCK_TYPE_NONE;
+    pData = QVariant::fromValue(0);
 }
 
-BlockValue::BlockValue(const BlockValue &blockVal) {
-    pBlockType = blockVal.BlockType();
-    pName = blockVal.Name();
-    pData = blockVal.Value();
+/*
+ * Block Value copy constructor
+ */
+BlockValue::BlockValue(const BlockValue &aBlockVal) {
+    pName = aBlockVal.Name();
+    pBlockType = aBlockVal.BlockType();
+    pData = aBlockVal.ToVariant();
 }
 
-BlockValue &BlockValue::operator=(const BlockValue &blockVal) {
-    if (this == &blockVal) {
+/*
+ * Block Value constructor w/ name
+ */
+BlockValue::BlockValue(const QString aName) {
+    pName = aName;
+    pBlockType = BLOCK_TYPE_NONE;
+    pData = QVariant::fromValue(0);
+}
+
+/*
+ * Block Value constructor w/ name & int8
+ */
+BlockValue::BlockValue(const QString aName, qint8 aVal) {
+    pName = aName;
+    pBlockType = BLOCK_TYPE_INT8;
+    pData = QVariant::fromValue(aVal);
+}
+
+/*
+ * Block Value constructor w/ name & uint8
+ */
+BlockValue::BlockValue(const QString aName, quint8 aVal) {
+    pName = aName;
+    pBlockType = BLOCK_TYPE_UINT8;
+    pData = QVariant::fromValue(aVal);
+}
+
+/*
+ * Block Value constructor w/ name & int16
+ */
+BlockValue::BlockValue(const QString aName, qint16 aVal) {
+    pName = aName;
+    pBlockType = BLOCK_TYPE_INT16;
+    pData = QVariant::fromValue(aVal);
+}
+
+/*
+ * Block Value constructor w/ name & uint16
+ */
+BlockValue::BlockValue(const QString aName, quint16 aVal) {
+    pName = aName;
+    pBlockType = BLOCK_TYPE_UINT16;
+    pData = QVariant::fromValue(aVal);
+}
+
+/*
+ * Block Value constructor w/ name & int32
+ */
+BlockValue::BlockValue(const QString aName, qint32 aVal) {
+    pName = aName;
+    pBlockType = BLOCK_TYPE_INT32;
+    pData = QVariant::fromValue(aVal);
+}
+
+/*
+ * Block Value constructor w/ name & uint32
+ */
+BlockValue::BlockValue(const QString aName, quint32 aVal) {
+    pName = aName;
+    pBlockType = BLOCK_TYPE_UINT32;
+    pData = QVariant::fromValue(aVal);
+}
+
+/*
+ * Block Value constructor w/ name & int64
+ */
+BlockValue::BlockValue(const QString aName, qint64 aVal) {
+    pName = aName;
+    pBlockType = BLOCK_TYPE_INT64;
+    pData = QVariant::fromValue(aVal);
+}
+
+/*
+ * Block Value constructor w/ name & uint64
+ */
+BlockValue::BlockValue(const QString aName, quint64 aVal) {
+    pName = aName;
+    pBlockType = BLOCK_TYPE_UINT64;
+    pData = QVariant::fromValue(aVal);
+}
+
+/*
+ * Block Value = operator implementation
+ */
+BlockValue &BlockValue::operator=(const BlockValue &aBlockVal) {
+    if (this == &aBlockVal) {
         return *this;
     }
 
-    pBlockType = blockVal.BlockType();
-    pName = blockVal.Name();
-    pData = blockVal.Value();
+    pBlockType = aBlockVal.BlockType();
+    pName = aBlockVal.Name();
+    pData = aBlockVal.ToVariant();
 
     return *this;
 }
 
-int BlockValue::ValueToInt() {
+/*
+ * Return Block Value as an integer
+ */
+int BlockValue::ToInt() const {
     switch ((int)pBlockType) {
     case 0: // BLOCK_TYPE_INT8
         return static_cast<int>(pData.value<qint8>());
@@ -56,62 +147,44 @@ int BlockValue::ValueToInt() {
     return -1;
 }
 
-void BlockValue::SetName(QString name) {
-    pName = name;
+/*
+ * Return Block Value as a string
+ */
+QString BlockValue::ToString() const {
+    return QString::number(ToInt());
 }
 
+/*
+ * Set Block Value type (uint8, int16, etc)
+ */
+QVariant BlockValue::ToVariant() const {
+    return pData;
+}
+
+/*
+ * Set Block Value's name
+ */
+void BlockValue::SetName(const QString aName) {
+    pName = aName;
+}
+
+/*
+ * Returns Block Value's name
+ */
 QString BlockValue::Name() const {
     return pName;
 }
 
-void BlockValue::SetBlockType(BLOCK_TYPE blockType) {
-    pBlockType = blockType;
+/*
+ * Set Block Balue type (uint8, int16, etc)
+ */
+void BlockValue::SetBlockType(BLOCK_TYPE aBlockType) {
+    pBlockType = aBlockType;
 }
 
+/*
+ * Get Block Balue type (uint8, int16, etc)
+ */
 BLOCK_TYPE BlockValue::BlockType() const {
     return pBlockType;
-}
-
-void BlockValue::SetValue(qint8 val) {
-    pBlockType = BLOCK_TYPE_INT8;
-    pData = QVariant::fromValue(val);
-}
-
-void BlockValue::SetValue(quint8 val) {
-    pBlockType = BLOCK_TYPE_UINT8;
-    pData = QVariant::fromValue(val);
-}
-
-void BlockValue::SetValue(qint16 val) {
-    pBlockType = BLOCK_TYPE_INT16;
-    pData = QVariant::fromValue(val);
-}
-
-void BlockValue::SetValue(quint16 val) {
-    pBlockType = BLOCK_TYPE_UINT16;
-    pData = QVariant::fromValue(val);
-}
-
-void BlockValue::SetValue(qint32 val) {
-    pBlockType = BLOCK_TYPE_INT32;
-    pData = QVariant::fromValue(val);
-}
-
-void BlockValue::SetValue(quint32 val) {
-    pBlockType = BLOCK_TYPE_UINT32;
-    pData = QVariant::fromValue(val);
-}
-
-void BlockValue::SetValue(qint64 val) {
-    pBlockType = BLOCK_TYPE_INT64;
-    pData = QVariant::fromValue(val);
-}
-
-void BlockValue::SetValue(quint64 val) {
-    pBlockType = BLOCK_TYPE_UINT64;
-    pData = QVariant::fromValue(val);
-}
-
-QVariant BlockValue::Value() const {
-    return pData;
 }

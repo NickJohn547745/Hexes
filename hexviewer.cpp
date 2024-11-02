@@ -1,147 +1,217 @@
 #include "hexviewer.h"
 
+/*
+ * HexViewer Constructor
+ */
 HexViewer::HexViewer(QWidget *parent)
-    : QAbstractScrollArea(parent) {
-    pText = "";
-    pHex = "";
-    pFileName = "";
-    pViewRect = QRectF(0, 0, 800, 557);
-    pBlinkTimer = new QTimer(this);
-    pRules = QQueue<Rule>();
-    pScrollValue = 0;
-    pVars = QMap<QString, BlockValue>();
-
+    : QAbstractScrollArea(parent)
+    , pText("")
+    , pHex("")
+    , pFileName("")
+    , pViewRect(0, 0, 800, 557)
+    , pBlinkTimer(new QTimer(this))
+    , pRules(QQueue<Rule>())
+    , pScrollValue(0)
+    , pVars(QMap<QString, BlockValue>())
+    , pFontMetrics(QFontMetrics(QFont("CommitMono", 10)))
+    , pFileDir("C:/"){
+    // Set font to monospaced option
     setFont(QFont("CommitMono", 10));
-
-    qRegisterMetaType<Rule>("Rule");
-    qRegisterMetaType<QQueue<Rule>>("QQueue<Rule>");
-    //qRegisterMetaTypeStreamOperators<QQueue<Rule>>("QQueue<Rule>");
-
-    verticalScrollBar()->setSingleStep(45);
-    verticalScrollBar()->setPageStep(45);
-    connect(verticalScrollBar(), &QScrollBar::valueChanged, this, [this](int value) {
-        pScrollValue = value;
-        pSeekFile();
-    });
-
-    connect(pBlinkTimer, &QTimer::timeout, this, [this]() {
-        pCursorVisible = !pCursorVisible;
-        update();  // Trigger update to show/hide cursor
-    });
-    pBlinkTimer->start(500);  // Blinking interval
+    // Initialize scroll bar and cursor timer
+    pInitScrollBar();
+    pInitCursorTimer();
 }
 
+/*
+ * HexViewer Destructor
+ */
 HexViewer::~HexViewer() {
     delete pBlinkTimer;
 }
 
-void HexViewer::SetFileName(const QString fileName) {
-    pFileName = fileName;
+/*
+ * Scroll Bar Initialization
+ */
+void HexViewer::pInitScrollBar() {
+    verticalScrollBar()->setSingleStep(DEFAULT_SINGLE_STEP);
+    verticalScrollBar()->setPageStep(DEFAULT_PAGE_STEP);
+    connect(verticalScrollBar(), &QScrollBar::valueChanged,
+            this, &HexViewer::pScrollValueChanged);
+}
 
-    pFile.setFileName(pFileName);
+/*
+ * Cursor Blink Timer Initialization
+ */
+void HexViewer::pInitCursorTimer() {
+    connect(pBlinkTimer, &QTimer::timeout,
+            this, &HexViewer::pBlinkCursor);
+    pBlinkTimer->start(500);  // Blinking interval
+}
+
+/*
+ * Set filename of hex file we want to open
+ */
+void HexViewer::SetFileName(const QString fileName) {
+    if (fileName.isEmpty()) { return; }
+    // Set file name & open for read-only
+    pFile.setFileName(pFileName = fileName);
     if (!pFile.open(QIODevice::ReadOnly)) {
-        qDebug() << "Failed to open " << pFileName;
-    } else {
-        qDebug() << "Opened " << pFileName;
+        const QString errorMsg("Failed to open " + pFileName);
+        HexesLogger::HexesError(20, errorMsg);
+        return;
     }
+    // Re-search the file contents to display
     pSeekFile();
 }
 
+/*
+ * Add a rule to our local queue
+ */
 void HexViewer::AddRule(const Rule rule) {
     pRules.enqueue(rule);
-
-    emit RuleNamesChanged(RuleNames());
-    RunRules();
+    // Refresh rules and view
+    pRefreshRules();
 }
 
+/*
+ * Adds multiple rules to our local queue
+ */
 void HexViewer::AddRules(const QVector<Rule> rules) {
+    if (rules.isEmpty()) { return; }
+    // Add rules from incoming queue
     for (int i = 0; i < rules.size(); i++) {
         pRules.enqueue(rules[i]);
     }
-
-    emit RuleNamesChanged(RuleNames());
-    RunRules();
+    // Refresh rules and view
+    pRefreshRules();
 }
 
+/*
+ * Remove a rule from our local queue
+ */
 void HexViewer::DeleteRule(const Rule rule) {
     if (!pRules.contains(rule)) { return; }
     if (pRules.size() == 0) { return; }
-
+    // Search for and remove rule
     for (int i = 0; i < pRules.size(); i++) {
         Rule currentRule = pRules.dequeue();
-
         if (currentRule != rule) {
             pRules.enqueue(currentRule);
         }
     }
-
-    emit RuleNamesChanged(RuleNames());
-    update();
+    // Refresh rules and view
+    pRefreshRules();
 }
 
+/*
+ * Remove a rule, by name, from our local queue
+ */
 void HexViewer::DeleteRuleByName(const QString ruleName) {
     if (pRules.size() == 0) { return; }
-
+    // Search for and remove rule
     for (int i = 0; i < pRules.size(); i++) {
         Rule currentRule = pRules.dequeue();
-
         if (currentRule.Name() != ruleName) {
             pRules.enqueue(currentRule);
         }
     }
-
-    emit RuleNamesChanged(RuleNames());
-    update();
+    // Refresh rules and view
+    pRefreshRules();
 }
 
+/*
+ * Pop/dequeue a rule from our local queue
+ */
 void HexViewer::PopRule() {
     if (pRules.isEmpty()) { return; }
-
     pRules.dequeue();
-    emit RuleNamesChanged(RuleNames());
-    update();
+    // Refresh rules and view
+    pRefreshRules();
 }
 
+/*
+ * Clear all rules from our local queue
+ */
 void HexViewer::ClearRules() {
     if (pRules.isEmpty()) { return; }
-
     pRules.clear();
-    emit RuleNamesChanged(RuleNames());
-    update();
+    // Refresh rules and view
+    pRefreshRules();
 }
 
+/*
+ * Save rules to a Hexes Rule File (.hrf)
+ */
 void HexViewer::SaveRules() {
+    // Have user choose where to save the .hrf
     QString filePath = QFileDialog::getSaveFileName(this, "Save Hexes Rule File",
-                                                    "C:/", "Rule File (*.hrf);;All Files(*.*)");
+                                                    pFileDir, "Rule File (*.hrf);;All Files(*.*)");
+    QString tempFilePath = filePath;
+    pFileDir = tempFilePath.replace(tempFilePath.split('/').last(), "");
+    emit BaseDirChanged(pFileDir);
+
+    // Open rule file, or report error, then close
     QFile ruleFile(filePath);
     if (!ruleFile.open(QIODevice::WriteOnly)) {
-        qDebug() << "Failed to save rule file!";
+        HexesLogger::HexesError(25, "Failed to save rule file!");
         return;
     }
     ruleFile.close();
-
+    // Write to rule file in ini format
     QSettings ruleExport(filePath, QSettings::IniFormat);
     ruleExport.setValue("rules", QVariant::fromValue(pRules));
 }
 
+/*
+ * Open a Hexes Rule File (.hrf)
+ */
 void HexViewer::OpenRules() {
+    // Have user choose where to save the .hrf
     QString filePath = QFileDialog::getOpenFileName(this, "Open Hexes Rule File",
-                                                    "C:/", "Rule File (*.hrf);;All Files(*.*)");
+                                                    pFileDir, "Rule File (*.hrf);;All Files(*.*)");
+    QString tempFilePath = filePath;
+    pFileDir = tempFilePath.replace(tempFilePath.split('/').last(), "");
+    emit BaseDirChanged(pFileDir);
+
+    // Open rule file, or report error, then close
     QFile ruleFile(filePath);
     if (!ruleFile.open(QIODevice::ReadOnly)) {
-        qDebug() << "Failed to save rule file!";
+        HexesLogger::HexesError(30, "Failed to open rule file!");
         return;
     }
     ruleFile.close();
-
+    // Read from rule file in ini format
     QSettings ruleExport(filePath, QSettings::IniFormat);
     pRules = ruleExport.value("rules").value<QQueue<Rule>>();
-    emit RuleNamesChanged(RuleNames());
-
-    RunRules();
+    // Notify & refresh rules and view
+    pRefreshRules();
+    emit FileOpened(filePath.split('/').last());
 }
 
+/*
+ * Open a binary input file
+ */
+void HexViewer::OpenFile() {
+    // Have user choose where to save the .hrf
+    QString filePath = QFileDialog::getOpenFileName(this, "Open Input File",
+                                                    pFileDir, "All Files(*.*)");
+
+    QString tempFilePath = filePath;
+    pFileDir = tempFilePath.replace(tempFilePath.split('/').last(), "");
+    emit BaseDirChanged(pFileDir);
+
+    SetFileName(filePath);
+    // Notify & refresh rules and view
+    pRefreshRules();
+    emit FileOpened(filePath);
+}
+
+/*
+ * Get a list of rule names from local queue
+ */
 QStringList HexViewer::RuleNames() {
+    if (pRules.isEmpty()) { return QStringList(); }
+    // Create and return name list
     QStringList ruleNames;
     foreach (Rule rule, pRules) {
         ruleNames.append(rule.Name());
@@ -149,162 +219,190 @@ QStringList HexViewer::RuleNames() {
     return ruleNames;
 }
 
-void HexViewer::RunRules() {
-    QDataStream inStream(QByteArray::fromHex(pHex.toUtf8()));
-
+/*
+ * Re-parse rules and update the variables' values
+ */
+void HexViewer::ParseRules() {
+    // Read in hex data as a byte-stream
+    HexStream hexStream(QByteArray::fromHex(pHex.toUtf8()));
+    // Iterate through local rules
     for (int i = 0; i < pRules.size(); i++) {
-        Rule rule = pRules[i];
+        Rule &rule = pRules[i]; // Current rule
+        qDebug() << rule.Name();
+        if ((rule.Type() == TYPE_NONE) || (rule.Type() == TYPE_SKIP)) {
+            hexStream.ParseSkip(rule.Length() + rule.SkipOffset());
+            continue;
+        }
+        // Repeat rule per defined repeat count
+        for (int j = 0; j <= rule.RepeatCount() + rule.RepeatOffset(); j++) {
+            // Set byte order and execute pre-skip
+            hexStream.SetHexByteOrder(rule.ByteOrder());
+            hexStream.ParseSkip(rule.PreSkipCount() + rule.PreSkipOffset());
 
-        for (int j = 0; j <= rule.RepeatCount(); j++) {
-            if (rule.ByteOrder() == BYTE_ORDER_BE) {
-                inStream.setByteOrder(QDataStream::BigEndian);
-            } else {
-                inStream.setByteOrder(QDataStream::LittleEndian);
-            }
+            // Create parse block to get value for variable
+            BlockValue val = hexStream.ParseRule(rule);
+            rule.SetValue(val.ToString());
 
-            QString ruleName = rule.Name().toUpper();
+            // Execute post-skip
+            hexStream.ParseSkip(rule.PostSkipCount() + rule.PostSkipOffset());
+
+            // Add a var suffix (index) if repeating
             if (rule.RepeatCount() > 0) {
-                ruleName += QString(" %1").arg(j);
+                pVars[rule.Name() + QString(" %1").arg(j)] = val;
+            } else {
+                pVars[rule.Name()] = val;
             }
-
-            BlockValue val;
-            val.SetName(ruleName);
-
-            if (rule.PreSkipCount() > 0) {
-                inStream.skipRawData(rule.PreSkipCount());
-            }
-
-            switch ((int)rule.Type()) {
-            case 1: // Skip
-                inStream.skipRawData(rule.Length());
-                break;
-            case 2: // int8
-                qint8 val_8;
-                inStream >> val_8;
-                rule.SetValue(QString::number(val_8));
-                val.SetValue(val_8);
-                break;
-            case 3: // uint8
-                quint8 val_u8;
-                inStream >> val_u8;
-                rule.SetValue(QString::number(val_u8));
-                val.SetValue(val_u8);
-                break;
-            case 4: // int16
-                qint16 val_16;
-                inStream >> val_16;
-                rule.SetValue(QString::number(val_16));
-                val.SetValue(val_16);
-                break;
-            case 5: // uint16
-                quint16 val_u16;
-                inStream >> val_u16;
-                rule.SetValue(QString::number(val_u16));
-                val.SetValue(val_u16);
-                break;
-            case 6: // int32
-                qint32 val_32;
-                inStream >> val_32;
-                rule.SetValue(QString::number(val_32));
-                val.SetValue(val_32);
-                break;
-            case 7: // uint32
-                quint32 val_u32;
-                inStream >> val_u32;
-                rule.SetValue(QString::number(val_u32));
-                val.SetValue(val_u32);
-                break;
-            case 8: // int64
-                qint64 val_64;
-                inStream >> val_64;
-                rule.SetValue(QString::number(val_64));
-                val.SetValue(val_64);
-                break;
-            case 9: // uint64
-                quint64 val_u64;
-                inStream >> val_u64;
-                rule.SetValue(QString::number(val_u64));
-                val.SetValue(val_u64);
-                break;
-            }
-            if (rule.PostSkipCount() > 0) {
-                inStream.skipRawData(rule.PostSkipCount());
-            }
-
-            if ((rule.Type() != TYPE_NONE)
-                    && (rule.Type() != TYPE_SKIP)) {
-                pVars[ruleName] = val;
-                emit VarsChanged(pVars);
-            }
-            pRules[i] = rule;
         }
     }
+    emit VarsChanged(pVars);
     update();
 }
 
+/*
+ * Return the local variable map
+ * - Note: May not be populated
+ */
 QMap<QString, BlockValue> HexViewer::GetVars() {
     return pVars;
 }
 
+void HexViewer::SetBaseDir(QString dir) {
+    pFileDir = dir;
+}
+
+/*
+ * Get the text representation of the data
+ */
 QString HexViewer::Text() {
     return pText;
 }
 
+/*
+ * Get the hex representation of the data
+ */
 QString HexViewer::Hex() {
     return pHex;
 }
 
-QRectF HexViewer::pCalcOffsetColumnRect() {
-    return QRectF(5, 30, 80, height() - 35);
+QString HexViewer::pFormatValuesGrid(const QVector<int> &values, int width, const QFont &font, int bitSize, int& textHeight) {
+    if (values.isEmpty()) return "";
+
+    QFontMetrics fm(font);
+    QString result;
+
+    // Determine the width for the index based on the number of digits in the largest index
+    int maxIndexDigits = QString::number(values.size()).length();
+
+    // Determine padding width for values based on bit size (minimal necessary width)
+    int valuePaddingWidth = 0;
+    switch (bitSize) {
+    case 8:  valuePaddingWidth = 3; break;  // int8 max is 255
+    case 16: valuePaddingWidth = 5; break;  // int16 max is 65535
+    case 32: valuePaddingWidth = 10; break; // int32 max is 4294967295
+    case 64: valuePaddingWidth = 20; break; // int64 max is very large
+    default: valuePaddingWidth = 10; break; // Default to int32-like width
+    }
+
+    // Calculate a compact maximum entry width (index + value) with minimal padding
+    int maxEntryWidth = fm.horizontalAdvance(QString("%1=%2  ")
+                                             .arg(values.size(), maxIndexDigits)
+                                             .arg(0, valuePaddingWidth, 10, QChar('0')));
+
+    // Determine the optimal number of entries per line based on available width
+    int entriesPerLine = std::max(1, width / maxEntryWidth);
+
+    // Build the grid-like output
+    int lineCount = 0;
+    for (int i = 0; i < values.size(); ++i) {
+        if (i > 0 && i % entriesPerLine == 0) {
+            result += "\n";
+            lineCount++;
+        } else if (i > 0) {
+            result += ", ";  // Minimal spacing between entries
+        }
+
+        // Format each entry with a left-aligned index and right-aligned value
+        result += QString("%1=%2")
+                .arg(i + 1, maxIndexDigits, 10, QChar(' '))            // Left-pad index minimally
+                .arg(values[i], -valuePaddingWidth, 10, QChar(' '));   // Right-pad value minimally
+    }
+
+    // Account for the final line
+    lineCount++;
+
+    // Calculate the height of the text block
+    textHeight = lineCount * fm.height();
+
+    return result;
 }
 
+/*
+ * Calculate the hex header rectangle
+ */
 QRectF HexViewer::pCalcHexHeaderRect() const {
-    QRectF paintRect = pCalcPaintRect();
+    qreal columnWidth = viewport()->width()
+            - (OFFSET_HEADER_WIDTH + (3 * MAX_PADDING));
+    qreal hexColumnWidth = (columnWidth / 5 * 3) - 2 * MAX_PADDING;
 
-    qreal columnWidth = paintRect.right() - 125;
-    qreal hexColumnWidth = (columnWidth / 5 * 3) - 15;
-
-    return QRectF(95, 5, hexColumnWidth - 10, 15);
+    return QRectF(OFFSET_HEADER_WIDTH + MAX_PADDING, MIN_PADDING,
+                  hexColumnWidth, HEADER_HEIGHT);
 }
 
-QRectF HexViewer::pCalcTextHeaderRect() {
-    QRectF paintRect = pCalcPaintRect();
+/*
+ * Calculate the text header rectangle
+ */
+QRectF HexViewer::pCalcTextHeaderRect() const {
+    qreal columnWidth = viewport()->width()
+            - (OFFSET_HEADER_WIDTH + (3 * MAX_PADDING));
+    qreal hexColumnWidth = (columnWidth / 5 * 3) - MAX_PADDING;
+    qreal textColumnWidth = (columnWidth / 5) + MAX_PADDING;
 
-    qreal columnWidth = paintRect.right() - 125;
-    qreal hexColumnWidth = (columnWidth / 5 * 3) - 15;
-    qreal textColumnWidth = (columnWidth / 5) + 15;
-
-    return QRectF(95 + hexColumnWidth, 5, textColumnWidth - 10, 15);
+    return QRectF(OFFSET_HEADER_WIDTH + hexColumnWidth + MAX_PADDING, MIN_PADDING,
+                  textColumnWidth - 2 * MAX_PADDING, MAX_PADDING);
 }
 
-QRectF HexViewer::pCalcRuleHeaderRect() {
-    QRectF paintRect = pCalcPaintRect();
+/*
+ * Calculate the rule header rectangle
+ */
+QRectF HexViewer::pCalcRuleHeaderRect() const {
+    qreal columnWidth = viewport()->width()
+            - (OFFSET_HEADER_WIDTH + (3 * MAX_PADDING));
+    qreal hexColumnWidth = (columnWidth / 5 * 3);
+    qreal textColumnWidth = (columnWidth / 5) + MAX_PADDING;
+    qreal ruleColumnWidth = (columnWidth / 5) + MAX_PADDING;
 
-    qreal columnWidth = paintRect.right() - 125;
-
-    qreal hexColumnWidth = (columnWidth / 5 * 3) - 15;
-    qreal textColumnWidth = (columnWidth / 5) + 15;
-    qreal ruleColumnWidth = (columnWidth / 5) + 15;
-
-    return QRectF(95 + hexColumnWidth + textColumnWidth, 5, ruleColumnWidth - 10, 15);
+    return QRectF(OFFSET_HEADER_WIDTH + hexColumnWidth + textColumnWidth, MIN_PADDING,
+                  ruleColumnWidth - MAX_PADDING, MAX_PADDING);
 }
 
-QRectF HexViewer::pCalcOffsetHeaderRect() {
-    return QRectF(5, 5, 80, 15);
+/*
+ * Calculate the offset header rectangle
+ */
+QRectF HexViewer::pCalcOffsetHeaderRect() const {
+    return QRectF(MIN_PADDING, MIN_PADDING,
+                  OFFSET_HEADER_WIDTH, HEADER_HEIGHT);
 }
 
+/*
+ * Calculate the offset column rectangle
+ */
+QRectF HexViewer::pCalcOffsetColumnRect() const {
+    return QRectF(MIN_PADDING, FONT_HEIGHT + HEADER_HEIGHT,
+                  OFFSET_HEADER_WIDTH, height() - STATUS_BAR_HEIGHT);
+}
+
+/*
+ * Paint the offset column
+ */
 void HexViewer::pPaintOffsetColumn(QPainter &painter) {
     QRectF offSetColumnRect = pCalcOffsetColumnRect();
     QRectF hexRect = pCalcHexRect();
-
-    int charWidth = fontMetrics().horizontalAdvance('F');
-    int hexCharsPerLine = qCeil(hexRect.width() / charWidth) / 3;
 
     QString offset = "";
     int nextOffset = verticalScrollBar()->value();
     for (int i = 0; i < qCeil(hexRect.height() / fontMetrics().height()); i++) {
         offset += QString::number(nextOffset).rightJustified(8, '0') + " ";
-        nextOffset += hexCharsPerLine;
+        nextOffset += pCalcCharCount();
     }
     offset = offset.trimmed();
 
@@ -312,16 +410,21 @@ void HexViewer::pPaintOffsetColumn(QPainter &painter) {
     painter.drawText(offSetColumnRect, Qt::TextWordWrap | Qt::AlignHCenter, offset);
 }
 
+/*
+ * Calculate the hex content rectangle
+ */
 QRectF HexViewer::pCalcHexRect() const {
-    QRectF paintRect = pCalcPaintRect();
+    qreal columnWidth = viewport()->width()
+            - (OFFSET_HEADER_WIDTH + (3 * MAX_PADDING));
+    qreal hexColumnWidth = (columnWidth / 5 * 3) - 2 * MAX_PADDING;
 
-    qreal columnWidth = paintRect.right() - 125;
-    qreal hexColumnWidth = (columnWidth / 5 * 3) - 15;
-    qreal scrollHeight = paintRect.height();
-
-    return QRectF(95, 30, hexColumnWidth - 10, scrollHeight - 35);
+    return QRectF(OFFSET_HEADER_WIDTH + MAX_PADDING, HEADER_HEIGHT + FONT_HEIGHT,
+                  hexColumnWidth, viewport()->height());
 }
 
+/*
+ * Paint the hex content
+ */
 void HexViewer::pPaintHex(QPainter &painter) {
     QRectF hexRect = pCalcHexRect();
 
@@ -329,42 +432,36 @@ void HexViewer::pPaintHex(QPainter &painter) {
     painter.drawText(hexRect, Qt::TextWordWrap, pHex);
 }
 
+/*
+ * Calculate the text content rect
+ */
 QRectF HexViewer::pCalcTextRect() const {
-    QRectF paintRect = pCalcPaintRect();
-    qreal columnWidth = paintRect.right() - 125;
-    qreal hexColumnWidth = 80 + (columnWidth / 5 * 3);
-    qreal textColumnWidth = (columnWidth / 5);
-    qreal scrollHeight = paintRect.height();
-    int charWidth = fontMetrics().horizontalAdvance("F");
+    qreal columnWidth = viewport()->width()
+            - (OFFSET_HEADER_WIDTH + (3 * MAX_PADDING));
+    qreal hexColumnWidth = (columnWidth / 5 * 3);
+    qreal textColumnWidth = (columnWidth / 5) - MAX_PADDING / 2;
 
-    return QRectF(hexColumnWidth, 30, textColumnWidth - charWidth, scrollHeight - 35);
+    return QRectF(OFFSET_HEADER_WIDTH + hexColumnWidth, HEADER_HEIGHT + FONT_HEIGHT,
+                  textColumnWidth, viewport()->height());
 }
 
-QRectF HexViewer::pCalcRuleRect() {
-    QRectF paintRect = pCalcPaintRect();
+/*
+ * Calculate rule sidebar rectangle
+ */
+QRectF HexViewer::pCalcRuleRect() const {
+    qreal columnWidth = viewport()->width()
+            - (OFFSET_HEADER_WIDTH + (3 * MAX_PADDING));
+    qreal hexColumnWidth = (columnWidth / 5 * 3);
+    qreal textColumnWidth = (columnWidth / 5) + MAX_PADDING;
+    qreal ruleColumnWidth = (columnWidth / 5) + MAX_PADDING;
 
-    qreal columnWidth = paintRect.right() - 125;
-
-    qreal hexColumnWidth = (columnWidth / 5 * 3) - 15;
-    qreal textColumnWidth = (columnWidth / 5) + 15;
-    qreal rulesColumnWidth = (columnWidth / 5) + 15;
-    qreal scrollHeight = pCalcContentHeight();
-
-    return QRectF(95 + hexColumnWidth + textColumnWidth, 30, rulesColumnWidth - 10, scrollHeight - 35);
+    return QRectF(OFFSET_HEADER_WIDTH + hexColumnWidth + textColumnWidth, HEADER_HEIGHT + FONT_HEIGHT,
+                  ruleColumnWidth, viewport()->height());
 }
 
-QString HexViewer::pInsertNewlinesAtIntervals(const QString &input, int interval) {
-    QString result = input;
-
-    for (int i = interval; i < result.length(); i += interval) {
-        result.insert(i, '\n');
-        i++;
-    }
-
-    return result;
-}
-
-
+/*
+ * Paint the text content
+ */
 void HexViewer::pPaintText(QPainter &painter) {
     QRectF textRect = pCalcTextRect();
 
@@ -372,6 +469,9 @@ void HexViewer::pPaintText(QPainter &painter) {
     painter.drawText(textRect, Qt::TextWrapAnywhere, pText);
 }
 
+/*
+ * Paint a hex rule over the content
+ */
 void HexViewer::pPaintHexRule(QPainter &painter, int &currentXPos,
                               int &currentYPos, int ruleLen, bool skip) {
     int charWidth = fontMetrics().horizontalAdvance("F");
@@ -386,8 +486,8 @@ void HexViewer::pPaintHexRule(QPainter &painter, int &currentXPos,
         int rectWidth = charsToDraw * 3 * charWidth;
 
         // Only draw if within the visible area vertically
-        if (adjustedYPos + fontMetrics().height() >= hexRect.top() &&
-            adjustedYPos <= hexRect.bottom()) {
+        if (adjustedYPos >= hexRect.top() &&
+                adjustedYPos <= (hexRect.bottom() - fontMetrics().height())) {
 
             QRectF skipRect(QPointF(currentXPos, adjustedYPos + 1),
                             QSizeF(rectWidth - charWidth, fontMetrics().height() - 2));
@@ -412,6 +512,9 @@ void HexViewer::pPaintHexRule(QPainter &painter, int &currentXPos,
     currentYPos = adjustedYPos + scrollHeight;
 }
 
+/*
+ * Paint a text rule over the content
+ */
 void HexViewer::pPaintTextRule(QPainter &painter, int &currentXPos,
                                int &currentYPos, int ruleLen, bool skip) {
     int charWidth = fontMetrics().horizontalAdvance("F");
@@ -438,8 +541,8 @@ void HexViewer::pPaintTextRule(QPainter &painter, int &currentXPos,
         int rectWidth = charsToDraw * charWidth;
 
         // Only draw if within the visible area vertically
-        if (adjustedYPos + fontMetrics().height() >= textRect.top() &&
-            adjustedYPos <= textRect.bottom()) {
+        if (adjustedYPos >= textRect.top() &&
+                adjustedYPos <= textRect.bottom()) {
 
             QRectF skipRect(QPointF(currentXPos, adjustedYPos + 1),
                             QSizeF(rectWidth, fontMetrics().height() - 2));
@@ -464,11 +567,12 @@ void HexViewer::pPaintTextRule(QPainter &painter, int &currentXPos,
     currentYPos = adjustedYPos + scrollHeight;
 }
 
-
-
+/*
+ * Seek to a new file location, process
+ * the contents, and update the view.
+ */
 void HexViewer::pSeekFile() {
     QRectF hexRect(pCalcHexRect());
-    qDebug() << "hexRect width" << hexRect.width();
     int dataLength = (hexRect.height() / fontMetrics().height()) * pCalcCharCount();
 
     if (dataLength < 0) {
@@ -479,15 +583,34 @@ void HexViewer::pSeekFile() {
         pHex = pCleanHex(data.toHex());
         pText = QString::fromLocal8Bit(data).replace('\0', '.');//,  pCalcCharCount());
     } else {
-        qDebug() << QString("File '%1' not open...").arg(pFile.fileName());
-        return;
+        //HexesLogger::HexesError(35, QString("File '%1' not open...").arg(pFile.fileName()));
+        //return;
     }
     pUpdateScrollBar();
     update();
 }
 
+/*
+ * void pRefreshRules()
+ *
+ * Notify rules have changed and update view
+ */
+void HexViewer::pRefreshRules() {
+    // Notify current rules have changed
+    emit RuleNamesChanged(RuleNames());
+    // Parse new vars and values
+    ParseRules();
+}
+
+/*
+ * void pPaintRules(QPainter &painter)
+ *
+ * Paint the hex rules to the sidebar
+ */
 void HexViewer::pPaintRules(QPainter &painter) {
     int ruleIndex = 1;
+    bool isSkip = false;
+    qreal fontHeight = QFontMetrics(painter.font()).height();
     QRectF rulesRect = pCalcRuleRect();
 
     painter.save();
@@ -501,96 +624,85 @@ void HexViewer::pPaintRules(QPainter &painter) {
     int textXPos = textRect.left();
     int textYPos = textRect.top();
 
-    QRectF clipRect(0, rulesRect.top(), width(), rulesRect.height());
-    painter.setClipRect(clipRect);
+    int currY = 0;
 
-    QQueue<Rule> rules = QQueue<Rule>(pRules);
+    foreach (Rule rule, pRules) {
+        QString typeText = "";
+        QString valueText = "";
+        int preSkipCount = rule.PreSkipCount();
+        int postSkipCount = rule.PostSkipCount();
+        QVector<int> repeatVals = QVector<int>();
 
-    foreach (Rule rule, rules) {
-        QString ruleName = rule.Name().toUpper();
-        if (rule.RepeatCount() > 0) {
-            ruleName += " %1";
-        }
+        QString ruleName = rule.Name();
 
+        QColor ruleBackground(rule.Color());
+        ruleBackground.setAlpha(75);
+        painter.setPen(Qt::black);
+        painter.setBrush(ruleBackground);
+
+        valueText.clear();
         for (int i = 0; i <= rule.RepeatCount(); i++) {
-            QString formattedName = ruleName;
-            int preSkipCount = rule.PreSkipCount();
-            int postSkipCount = rule.PostSkipCount();
-
+            QString formattedName = rule.Name();
             if (rule.RepeatCount() > 0) {
-                formattedName = formattedName.arg(i + 1);
+                formattedName = QString(rule.Name() + " %1").arg(i + 1);
             }
-
-            painter.setPen(QPen(rule.Color(), 1));
-
-            QString typeText = "";
-            QString valueText = "";
-
-            QColor ruleBackground(rule.Color());
-            ruleBackground.setAlpha(75);
-            painter.setBrush(ruleBackground);
-
-            // Draw the rule information in the rule stack on the right side
-            QRectF ruleBackgroundRect(rulesRect.left(), -verticalScrollBar()->value() + rulesRect.top() + 1 + (QFontMetrics(painter.font()).height() * 3) * (ruleIndex - 1),
-                            rulesRect.width(), QFontMetrics(painter.font()).height() * 3);
-            QRectF ruleRect(rulesRect.left() + 1, -verticalScrollBar()->value() + rulesRect.top() + 2 + (QFontMetrics(painter.font()).height() * 3) * (ruleIndex - 1),
-                            rulesRect.width() - 2, QFontMetrics(painter.font()).height() * 3);
-            painter.drawRect(ruleBackgroundRect);
-
+            // Paint pre-skip
             if (preSkipCount > 0) {
-                //typeText = QString("Skip %1 byte(s)").arg(rule.Length());
                 pPaintHexRule(painter, hexXPos, hexYPos, preSkipCount, true);
                 pPaintTextRule(painter, textXPos, textYPos, preSkipCount, true);
-                //isSkip = true;
             }
-            if (postSkipCount > 0) {
-                //typeText = QString("Skip %1 byte(s)").arg(rule.Length());
-                pPaintHexRule(painter, hexXPos, hexYPos, postSkipCount, true);
-                pPaintTextRule(painter, textXPos, textYPos, postSkipCount, true);
-                //isSkip = true;
-            }
-
-            bool isSkip = false;
-            switch ((int)rule.Type()) {
-            case 1: // TYPE_SKIP
-                typeText = QString("Skip %1 byte(s)").arg(rule.Length());
+            // Paint skip or int
+            if (rule.Type() == TYPE_SKIP) {
                 pPaintHexRule(painter, hexXPos, hexYPos, rule.Length(), true);
                 pPaintTextRule(painter, textXPos, textYPos, rule.Length(), true);
                 isSkip = true;
-                break;
-
-            case 2: // TYPE_INT_8
-            case 3: // TYPE_UINT_8
-            case 4: // TYPE_INT_16
-            case 5: // TYPE_UINT_16
-            case 6: // TYPE_INT_32
-            case 7: // TYPE_UINT_32
-            case 8: // TYPE_INT_64
-            case 9: // TYPE_UINT_64
-                typeText = QString("%1-BIT %2 INTEGER").arg(rule.Length() * 8).arg(rule.Type() % 2 == 0 ? "" : "US");
-                valueText = pVars[formattedName].Value().toString();
+            } else {
+                typeText = QString("%1-BIT %2 INTEGER").arg(rule.Length() * 8)
+                        .arg(rule.Type() % 2 == 0 ? "" : "US");
+                valueText += pVars[formattedName].ToString() + "\n";
+                if (rule.RepeatCount() > 0) {
+                    repeatVals.push_back(pVars[formattedName].ToInt());
+                }
                 pPaintHexRule(painter, hexXPos, hexYPos, rule.Length());
                 pPaintTextRule(painter, textXPos, textYPos, rule.Length());
-                break;
-
-            default:
-                typeText = "UH-OH";
-                break;
             }
-
-            painter.setPen(Qt::black);
-            QString paddedIndex = QString::number(ruleIndex).rightJustified(2, '0');
-            QString ruleText = QString("%1. %2\n%3\n%4\n").arg(paddedIndex, formattedName,
-                                                               typeText, valueText);
-            painter.drawText(ruleRect, Qt::TextWrapAnywhere, ruleText);
-
-            QString ruleByteOrder = QString(rule.ByteOrder() == BYTE_ORDER_BE ? "BE" : "LE") + "\n\n";
-            if (!isSkip) {
-                painter.drawText(ruleRect, Qt::AlignRight, ruleByteOrder);
+            // Paint post-skip
+            if (postSkipCount > 0) {
+                pPaintHexRule(painter, hexXPos, hexYPos, postSkipCount, true);
+                pPaintTextRule(painter, textXPos, textYPos, postSkipCount, true);
             }
-
-            ruleIndex++;
         }
+
+        if (!isSkip) {
+            int blockHeight;
+            if (repeatVals.size() > 0) {
+                valueText = pFormatValuesGrid(repeatVals, rulesRect.width(), painter.font(), rule.Length() * 8, blockHeight);
+            }
+
+            qreal ruleHeight;
+            if (rule.RepeatCount() == 0) {
+                ruleHeight = fontHeight * 2;
+            } else {
+                ruleHeight = fontHeight * 2 + blockHeight;
+            }
+
+            QRectF ruleRect(rulesRect.left() + 1, -verticalScrollBar()->value() + rulesRect.top() + 2 + currY,
+                            rulesRect.width() - 2, ruleHeight);
+            QString paddedIndex = QString::number(ruleIndex).rightJustified(2, '0');
+            QString ruleText = QString("%1. %2\n%3\n%4\n").arg(paddedIndex, ruleName,
+                                                               typeText, valueText);
+            QString ruleByteOrder = QString(rule.ByteOrder() == BYTE_ORDER_BE ? "BE" : "LE") + "\n\n";
+            painter.drawText(ruleRect, Qt::TextWrapAnywhere, ruleText);
+            painter.drawText(ruleRect, Qt::AlignRight, ruleByteOrder);
+
+            QRectF ruleBackgroundRect(rulesRect.left(), -verticalScrollBar()->value() + rulesRect.top() + 1 + currY,
+                                      rulesRect.width(), ruleHeight);
+
+            painter.drawRect(ruleBackgroundRect);
+            ruleIndex++;
+            currY += ruleHeight;
+        }
+        isSkip = false;
     }
     painter.restore();
 }
@@ -628,7 +740,7 @@ void HexViewer::pPaintHeaders(QPainter &painter) {
 void HexViewer::paintEvent(QPaintEvent *event) {
     QPainter painter(viewport());
     if (!painter.isActive()) {
-        qWarning() << "QPainter is not active";
+        HexesLogger::HexesError(45, "QPainter is not active!");
         return;
     }
     if (event->rect().isEmpty()) { return; }
@@ -640,24 +752,22 @@ void HexViewer::paintEvent(QPaintEvent *event) {
     pPaintText(painter);
     pPaintRules(painter);
 
-    if (pCursorVisible) {
-        QPoint cursorPos = pCalcCursorPosition();
+    // if (pCursorVisible) {
+    //     QPoint cursorPos = pCalcCursorPosition();
 
-        QFontMetrics fm(font());
-        int cursorHeight = fm.height();
+    //     int cursorHeight = pFontMetrics.height();
 
-        painter.drawLine(cursorPos.x(), cursorPos.y(), cursorPos.x(), cursorPos.y() + cursorHeight);
-    }
-    if (pSelectionStart >= 0 && pSelectionEnd >= pSelectionStart) {
-        if (pSelectionStart >= 0 && pSelectionEnd >= pSelectionStart) {
-            QFontMetrics fm(font());
-            int startX = fm.horizontalAdvance(pText.left(pSelectionStart));
-            int endX = fm.horizontalAdvance(pText.left(pSelectionEnd));
-            int height = fm.height();
+    //     painter.drawLine(cursorPos.x(), cursorPos.y(), cursorPos.x(), cursorPos.y() + cursorHeight);
+    // }
+    // if (pSelectionStart >= 0 && pSelectionEnd >= pSelectionStart) {
+    //     if (pSelectionStart >= 0 && pSelectionEnd >= pSelectionStart) {
+    //         int startX = pFontMetrics.horizontalAdvance(pText.left(pSelectionStart));
+    //         int endX = pFontMetrics.horizontalAdvance(pText.left(pSelectionEnd));
+    //         int height = pFontMetrics.height();
 
-            painter.fillRect(QRect(startX, 0, endX - startX, height), QColor(0, 120, 215, 100)); // Semi-transparent blue
-        }
-    }
+    //         painter.fillRect(QRect(startX, 0, endX - startX, height), QColor(0, 120, 215, 100)); // Semi-transparent blue
+    //     }
+    // }
 }
 
 void HexViewer::showEvent(QShowEvent *event) {
@@ -668,6 +778,16 @@ void HexViewer::showEvent(QShowEvent *event) {
 
 QSize HexViewer::sizeHint() const {
     return pCalcPaintRect().size().toSize();
+}
+
+void HexViewer::pScrollValueChanged(int value) {
+    pScrollValue = value;
+    pSeekFile();
+}
+
+void HexViewer::pBlinkCursor() {
+    pCursorVisible = !pCursorVisible;
+    update();
 }
 
 void HexViewer::resizeEvent(QResizeEvent *event) {
@@ -727,7 +847,7 @@ int HexViewer::pCalcLineCount() const {
     return pText.length() / pCalcCharCount();
 }
 
-QPoint HexViewer::pCalcCursorPosition() {
+QPoint HexViewer::pCalcCursorPosition() const {
     int lineHeight = fontMetrics().height();
 
     int line = pCalcCursorLine();
@@ -747,7 +867,7 @@ QRectF HexViewer::pCalcPaintRect() const {
     return pViewRect;
 }
 
-int HexViewer::pCalcCursorLine() {
+int HexViewer::pCalcCursorLine() const {
     qreal columnWidth = rect().right() - 90 - verticalScrollBar()->width();
     qreal scrollHeight = verticalScrollBar()->height();
     qreal hexColumnWidth = (columnWidth / 4 * 3) - 15;

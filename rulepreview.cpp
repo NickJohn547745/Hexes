@@ -72,8 +72,9 @@ void RulePreview::paintEvent(QPaintEvent *event) {
 
     int ruleIndex = 1;
     QRectF rulesRect = event->rect();
-    painter.setBrush(Qt::white);
-    painter.drawRect(rulesRect);
+    painter.setBrush(QColor(45, 45, 45));
+    painter.setPen(QPen(QColor(60, 60, 60), 2));
+    painter.drawRoundedRect(rulesRect, 8, 8);
 
     painter.setFont(QFont("CommitMono", 7));
 
@@ -88,12 +89,13 @@ void RulePreview::paintEvent(QPaintEvent *event) {
         QColor ruleBackground(rule.Color());
         ruleBackground.setAlpha(75);
         painter.setBrush(ruleBackground);
+        int offset = ruleIndex * 5;
 
         // Draw the rule information in the rule stack on the right side
-        QRectF ruleBackgroundRect(rulesRect.left(), -pScrollValue + rulesRect.top() + 1 + (QFontMetrics(painter.font()).height() * 3) * (ruleIndex - 1),
-                        rulesRect.width(), QFontMetrics(painter.font()).height() * 3);
-        QRectF ruleRect(rulesRect.left() + 1, -pScrollValue + rulesRect.top() + 2 + (QFontMetrics(painter.font()).height() * 3) * (ruleIndex - 1),
-                        rulesRect.width() - 2, QFontMetrics(painter.font()).height() * 3);
+        QRectF ruleBackgroundRect(rulesRect.left() + 10, offset - pScrollValue + rulesRect.top() + 11 + (QFontMetrics(painter.font()).height() * 3) * (ruleIndex - 1),
+                        rulesRect.width() - 20, QFontMetrics(painter.font()).height() * 3);
+        QRectF ruleRect(rulesRect.left() + 11, offset - pScrollValue + rulesRect.top() + 12 + (QFontMetrics(painter.font()).height() * 3) * (ruleIndex - 1),
+                        rulesRect.width() - 22, QFontMetrics(painter.font()).height() * 3);
         painter.drawRect(ruleBackgroundRect);
 
         pScrollMax = qMax(pScrollMax, (int)ruleRect.bottom());
@@ -119,7 +121,7 @@ void RulePreview::paintEvent(QPaintEvent *event) {
             break;
         }
 
-        painter.setPen(Qt::black);
+        painter.setPen(Qt::white);
         QString paddedIndex = QString::number(ruleIndex).rightJustified(2, '0');
         QString ruleName = rule.Name().toUpper();
 
@@ -129,7 +131,6 @@ void RulePreview::paintEvent(QPaintEvent *event) {
         if (!isSkip) {
             painter.drawText(ruleRect, Qt::AlignRight, ruleByteOrder);
         }
-
         ruleIndex++;
     }
     emit ScrollMaxChanged(qMax(0, static_cast<int>(pScrollMax - rulesRect.height())));

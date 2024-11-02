@@ -4,5 +4,8 @@
     </qresource>
     <qresource prefix="/icons">
         <file>delete.png</file>
+        <file>skip.png</file>
+        <file>general.png</file>
+        <file>repeat.png</file>
     </qresource>
 </RCC>

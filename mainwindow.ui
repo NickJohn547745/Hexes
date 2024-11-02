@@ -33,14 +33,25 @@
     <property name="title">
      <string>File</string>
     </property>
+    <widget class="QMenu" name="menuRecent_Files">
+     <property name="title">
+      <string>Recent Files</string>
+     </property>
+     <addaction name="separator"/>
+     <addaction name="actionClear_Recents_2"/>
+    </widget>
     <addaction name="actionNew"/>
     <addaction name="actionOpen"/>
     <addaction name="actionClose"/>
-    <addaction name="actionSave"/>
+    <addaction name="separator"/>
+    <addaction name="actionSave_Rule_File"/>
     <addaction name="actionSave_As"/>
+    <addaction name="actionOpen_Rule_File"/>
     <addaction name="separator"/>
     <addaction name="actionSave_all"/>
     <addaction name="actionClose_all"/>
+    <addaction name="separator"/>
+    <addaction name="menuRecent_Files"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
@@ -207,6 +218,55 @@
   <action name="actionClear_Rules">
    <property name="text">
     <string>Clear Rules</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>CommitMono</family>
+     <pointsize>8</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionRecentFiles">
+   <property name="text">
+    <string>RecentFiles</string>
+   </property>
+  </action>
+  <action name="actionClear_Recents">
+   <property name="text">
+    <string>Clear Recents</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>CommitMono</family>
+     <pointsize>7</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionOpen_Rule_File">
+   <property name="text">
+    <string>Open Rule File</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>CommitMono</family>
+     <pointsize>8</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionSave_Rule_File">
+   <property name="text">
+    <string>Save Rule File</string>
+   </property>
+   <property name="font">
+    <font>
+     <family>CommitMono</family>
+     <pointsize>8</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionClear_Recents_2">
+   <property name="text">
+    <string>Clear Recents</string>
    </property>
    <property name="font">
     <font>
